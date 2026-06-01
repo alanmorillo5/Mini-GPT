@@ -1,0 +1,27 @@
+# Local Virtual Environment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Local Data and Datasets
+data/
+*.bin
+*.npy
+
+# Model Checkpoints and Weights
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+*.bin
+
+# IDE and OS specific files
+.DS_Store
+.vscode/
+.idea/
+
+# AI stuff
+AGENTS.md
+antigravity.yaml
