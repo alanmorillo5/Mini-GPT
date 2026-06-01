@@ -21,7 +21,3 @@ checkpoints/
 .DS_Store
 .vscode/
 .idea/
-
-# AI stuff
-AGENTS.md
-antigravity.yaml
