@@ -32,6 +32,23 @@ def get_batch(split, seq_len, batch_size, device="cpu"):
     y = torch.stack([torch.from_numpy((data[i+1:i+1+seq_len]).astype(np.int64)) for i in ix])
     return x.to(device), y.to(device)
 
+
+@torch.no_grad()
+def estimate_loss(model, eval_iters, seq_len, batch_size, device):
+    out = {}
+    model.eval()
+    criterion = nn.CrossEntropyLoss()
+    for split in ['train', 'val']:
+        losses = torch.zeros(eval_iters)
+        for k in range(eval_iters):
+            X, Y = get_batch(split, seq_len, batch_size, device)
+            logits = model(X)
+            loss = criterion(logits.view(-1, logits.size(-1)), Y.view(-1))
+            losses[k] = loss.item()
+        out[split] = losses.mean().item()
+    model.train()
+    return out
+
 def main():
     if torch.backends.mps.is_available():
         device = "mps"
@@ -57,8 +74,27 @@ def main():
     
     criterion = nn.CrossEntropyLoss()
     
+    os.makedirs("checkpoints", exist_ok=True)
+    best_val_loss = float('inf')
+    eval_interval = 100
+    eval_iters = 10
+    
     model.train()
     for step in range(max_steps):
+        if step % eval_interval == 0 or step == max_steps - 1:
+            losses = estimate_loss(model, eval_iters, seq_len, batch_size, device)
+            print(f"Step {step} | Train Loss: {losses['train']:.4f} | Val Loss: {losses['val']:.4f}")
+            if losses['val'] < best_val_loss:
+                best_val_loss = losses['val']
+                checkpoint = {
+                    'model': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'step': step,
+                    'best_val_loss': best_val_loss,
+                }
+                torch.save(checkpoint, "checkpoints/ckpt.pt")
+                print(f"Saved new best checkpoint with Val Loss: {best_val_loss:.4f}")
+        
         lr = get_lr(step, warmup_steps, max_steps, max_lr, min_lr)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
