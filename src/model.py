@@ -150,3 +150,41 @@ class TransformerBlock(nn.Module):
         h = x + self.attention(self.attention_norm(x), freqs_cis, mask)
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
+
+class GPT(nn.Module):
+    def __init__(self, args: ModelArgs):
+        super().__init__()
+        self.args = args
+        self.vocab_size = args.vocab_size
+        self.n_layers = args.n_layers
+
+        self.tok_embeddings = nn.Embedding(args.vocab_size, args.dim)
+        self.layers = nn.ModuleList([TransformerBlock(i, args) for i in range(args.n_layers)])
+        self.norm = RMSNorm(args.dim, eps=args.norm_eps)
+        self.output = nn.Linear(args.dim, args.vocab_size, bias=False)
+
+        # Share token embedding and output layer weights
+        self.output.weight = self.tok_embeddings.weight
+
+        self.freqs_cis = precompute_freqs_cis(
+            args.dim // args.n_heads, args.max_seq_len * 2
+        )
+
+    def forward(self, tokens: torch.Tensor):
+        _bsz, seqlen = tokens.shape
+        h = self.tok_embeddings(tokens)
+        self.freqs_cis = self.freqs_cis.to(h.device)
+        freqs_cis = self.freqs_cis[:seqlen]
+
+        mask = None
+        if seqlen > 1:
+            mask = torch.full(
+                (seqlen, seqlen), float("-inf"), device=tokens.device
+            )
+            mask = torch.triu(mask, diagonal=1)
+
+        for layer in self.layers:
+            h = layer(h, freqs_cis, mask)
+        h = self.norm(h)
+        output = self.output(h)
+        return output
