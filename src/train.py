@@ -33,7 +33,13 @@ def get_batch(split, seq_len, batch_size, device="cpu"):
     return x.to(device), y.to(device)
 
 def main():
-    device = "cpu"
+    if torch.backends.mps.is_available():
+        device = "mps"
+    elif torch.cuda.is_available():
+        device = "cuda"
+    else:
+        device = "cpu"
+    print(f"Using device: {device}")
     
     # Hyperparameters
     batch_size = 4
