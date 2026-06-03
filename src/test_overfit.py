@@ -12,7 +12,9 @@ def test_overfit():
     # Just generating random data for 5 sentences
     torch.manual_seed(42)
     X = torch.randint(0, vocab_size, (batch_size, seq_len))
-    Y = torch.randint(0, vocab_size, (batch_size, seq_len))
+    Y = X.clone()
+    Y[:, :-1] = X[:, 1:]  # Shift left by 1 token
+    Y[:, -1] = 0          # Pad the final token
     
     args = ModelArgs(
         dim=64,

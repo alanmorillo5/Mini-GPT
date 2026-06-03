@@ -10,7 +10,7 @@ def main():
     parser.add_argument("--train", action="store_true", help="Run training mode")
     parser.add_argument("--chat", action="store_true", help="Run chat generation mode")
     parser.add_argument("--prompt", type=str, default="Once upon a time", help="Prompt for chat mode")
-    parser.add_argument("--tokens", type=int, default=50, help="Number of tokens to generate")
+    parser.add_argument("--tokens", type=int, default=200, help="Number of tokens to generate")
     
     args = parser.parse_args()
     

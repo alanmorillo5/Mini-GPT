@@ -163,17 +163,30 @@ class GPT(nn.Module):
         self.norm = RMSNorm(args.dim, eps=args.norm_eps)
         self.output = nn.Linear(args.dim, args.vocab_size, bias=False)
 
-        # Share token embedding and output layer weights
+        # Initialize weights BEFORE tying so the shared parameter isn't broken
+        self.apply(self._init_weights)
+
+        # Apply scaled initialization to residual-path projections
+        # to prevent variance explosion in deep residual streams
+        residual_std = 0.02 / math.sqrt(2 * args.n_layers)
+        for layer in self.layers:
+            torch.nn.init.normal_(layer.attention.wo.weight, mean=0.0, std=residual_std)
+            torch.nn.init.normal_(layer.feed_forward.w2.weight, mean=0.0, std=residual_std)
+
+        # Weight tying: share embedding and output projection weights.
+        # This MUST come after _init_weights so the tie is not broken.
         self.output.weight = self.tok_embeddings.weight
 
-        self.freqs_cis = precompute_freqs_cis(
-            args.dim // args.n_heads, args.max_seq_len * 2
+        # Register as a buffer so it moves with model.to(device) automatically
+        self.register_buffer(
+            "freqs_cis",
+            precompute_freqs_cis(args.dim // args.n_heads, args.max_seq_len * 2),
+            persistent=False,
         )
 
     def forward(self, tokens: torch.Tensor):
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
-        self.freqs_cis = self.freqs_cis.to(h.device)
         freqs_cis = self.freqs_cis[:seqlen]
 
         mask = None
@@ -188,3 +201,9 @@ class GPT(nn.Module):
         h = self.norm(h)
         output = self.output(h)
         return output
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)

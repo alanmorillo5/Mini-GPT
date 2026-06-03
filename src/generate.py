@@ -41,7 +41,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
     return logits
 
 @torch.no_grad()
-def generate(model, prompt, max_new_tokens=50, device="cpu", temperature=1.0, top_k=50, top_p=0.9):
+def generate(model, prompt, max_new_tokens=200, device="cpu", temperature=0.8, top_k=40, top_p=0.9):
     tokenizer = get_tokenizer()
     input_ids = tokenizer.encode(prompt)
     x = torch.tensor([input_ids], dtype=torch.long, device=device)
@@ -63,7 +63,7 @@ def generate(model, prompt, max_new_tokens=50, device="cpu", temperature=1.0, to
     return tokenizer.decode(x[0].tolist())
 
 @torch.no_grad()
-def generate_stream(model, prompt, max_new_tokens=50, device="cpu", temperature=1.0, top_k=50, top_p=0.9):
+def generate_stream(model, prompt, max_new_tokens=200, device="cpu", temperature=0.8, top_k=40, top_p=0.9):
     tokenizer = get_tokenizer()
     input_ids = tokenizer.encode(prompt)
     x = torch.tensor([input_ids], dtype=torch.long, device=device)

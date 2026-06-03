@@ -59,10 +59,10 @@ def main():
     print(f"Using device: {device}")
     
     # Hyperparameters
-    batch_size = 4
-    seq_len = 64
-    max_steps = 1000
-    warmup_steps = 100
+    batch_size = 32
+    seq_len = 512
+    max_steps = 50000
+    warmup_steps = 700
     max_lr = 6e-4
     min_lr = 6e-5
     
@@ -76,8 +76,10 @@ def main():
     
     os.makedirs("checkpoints", exist_ok=True)
     best_val_loss = float('inf')
-    eval_interval = 100
-    eval_iters = 10
+    eval_interval = 500
+    eval_iters = 50
+    patience = 30          # stop after this many evals with no improvement
+    steps_since_improvement = 0
     
     model.train()
     for step in range(max_steps):
@@ -86,6 +88,7 @@ def main():
             print(f"Step {step} | Train Loss: {losses['train']:.4f} | Val Loss: {losses['val']:.4f}")
             if losses['val'] < best_val_loss:
                 best_val_loss = losses['val']
+                steps_since_improvement = 0
                 checkpoint = {
                     'model': model.state_dict(),
                     'optimizer': optimizer.state_dict(),
@@ -94,6 +97,12 @@ def main():
                 }
                 torch.save(checkpoint, "checkpoints/ckpt.pt")
                 print(f"Saved new best checkpoint with Val Loss: {best_val_loss:.4f}")
+            else:
+                steps_since_improvement += 1
+                print(f"No improvement for {steps_since_improvement}/{patience} evals")
+                if steps_since_improvement >= patience:
+                    print(f"Early stopping triggered at step {step} — no improvement for {patience * eval_interval} steps.")
+                    break
         
         lr = get_lr(step, warmup_steps, max_steps, max_lr, min_lr)
         for param_group in optimizer.param_groups:
@@ -109,7 +118,7 @@ def main():
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         
-        if step % 10 == 0:
+        if step % 50 == 0:
             print(f"Step {step} | Loss: {loss.item():.4f} | LR: {lr:.6f}")
 
 if __name__ == "__main__":
