@@ -61,9 +61,7 @@ def main():
     print(f"Using device: {device}")
     
     # Hyperparameters
-    micro_batch_size = 4       # fits in MPS memory
-    grad_accum_steps = 8       # effective batch = 4 * 8 = 32
-    batch_size = micro_batch_size
+    batch_size = 32
     seq_len = 512
     max_steps = 50000
     warmup_steps = 700
@@ -77,7 +75,6 @@ def main():
     # Count and report parameters
     n_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {n_params:,} ({n_params/1e6:.1f}M)")
-    print(f"Effective batch size: {micro_batch_size} x {grad_accum_steps} = {micro_batch_size * grad_accum_steps}")
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=max_lr, weight_decay=1e-1)
     
@@ -117,22 +114,18 @@ def main():
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
         
-        # Gradient accumulation: accumulate over multiple micro-batches
-        optimizer.zero_grad(set_to_none=True)
-        accum_loss = 0.0
-        for micro_step in range(grad_accum_steps):
-            xb, yb = get_batch('train', seq_len, batch_size, device)
-            logits = model(xb)
-            loss = criterion(logits.view(-1, logits.size(-1)), yb.view(-1))
-            loss = loss / grad_accum_steps  # scale loss by accumulation steps
-            loss.backward()
-            accum_loss += loss.item()
+        xb, yb = get_batch('train', seq_len, batch_size, device)
         
+        logits = model(xb)
+        loss = criterion(logits.view(-1, logits.size(-1)), yb.view(-1))
+        
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         
         if step % 50 == 0:
-            print(f"Step {step} | Loss: {accum_loss:.4f} | LR: {lr:.6f}")
+            print(f"Step {step} | Loss: {loss.item():.4f} | LR: {lr:.6f}")
 
 if __name__ == "__main__":
     main()
