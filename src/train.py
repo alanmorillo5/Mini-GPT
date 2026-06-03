@@ -4,6 +4,20 @@ import torch
 import torch.nn as nn
 import numpy as np
 from model import GPT, ModelArgs
+from dataset import process_data
+
+def ensure_data_ready():
+    """Auto-tokenize raw .txt files into train.bin/val.bin if they don't exist."""
+    train_path = "data/train.bin"
+    val_path = "data/val.bin"
+    if os.path.exists(train_path) and os.path.exists(val_path):
+        return
+    print("Binary data files not found — auto-tokenizing from data/*.txt ...")
+    process_data()
+    if not os.path.exists(train_path) or not os.path.exists(val_path):
+        raise FileNotFoundError(
+            "No .txt files found in data/. Place your training text there and retry."
+        )
 
 def get_lr(step, warmup_steps, max_steps, max_lr, min_lr):
     if step < warmup_steps:
@@ -59,6 +73,8 @@ def main():
     else:
         device = "cpu"
     print(f"Using device: {device}")
+    
+    ensure_data_ready()
     
     # Hyperparameters
     batch_size = 32

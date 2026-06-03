@@ -3,7 +3,7 @@
 This directory is intended to store the raw `.txt` files that make up your training dataset. 
 
 ## How the Dataset is Compiled
-The data ingestion pipeline (located in `src/dataset.py`) looks for any raw text files within this `data/` directory, concatenates them, and tokenizes them using the GPT-2 Byte-Pair Encoding (`tiktoken`). It then splits the tokenized data into an 80/20 train and validation split, saving them to efficient memory-mapped binaries (`train.bin` and `val.bin`) which the model reads during training.
+The data ingestion pipeline (located in `src/dataset.py`) looks for any raw text files within this `data/` directory, concatenates them, and tokenizes them using the GPT-2 Byte-Pair Encoding (`tiktoken`). It then splits the tokenized data into a 90/10 train and validation split, saving them to efficient memory-mapped binaries (`train.bin` and `val.bin`) which the model reads during training. This happens automatically when you run `python main.py --train`.
 
 ## Where to get Raw Text Data
 To train a generalized language model, you need a substantial corpus of text data. Here are a few great open-source datasets you can use:
